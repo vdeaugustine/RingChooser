@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Ring Decision Tool - Oura vs RingConn</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <h1>Smart Ring Decision Tool</h1>
+            <p>Oura Ring 4 vs. RingConn Gen 2</p>
+        </header>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="progress-count">0 of 156 questions answered</span>
+                <span id="progress-percent">0%</span>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="screen active">
+                <div class="welcome-content">
+                    <h2>Welcome to the Smart Ring Decision Tool</h2>
+                    <p>This comprehensive questionnaire will help you decide between the Oura Ring 4 and RingConn Gen 2 smart rings.</p>
+                    
+                    <div class="info-box">
+                        <h3>How it works:</h3>
+                        <ul>
+                            <li><strong>156 questions</strong> covering 22 categories</li>
+                            <li>Rate each question from <strong>0-10</strong> based on importance to you</li>
+                            <li>Your answers are <strong>saved automatically</strong> so you can return later</li>
+                            <li>Get a <strong>personalized recommendation</strong> based on your priorities</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-box">
+                        <h3>Rating Scale:</h3>
+                        <ul>
+                            <li><strong>0</strong> - Not Important</li>
+                            <li><strong>1-2</strong> - Very Low Importance</li>
+                            <li><strong>3-4</strong> - Low to Below Average</li>
+                            <li><strong>5</strong> - Moderate Importance</li>
+                            <li><strong>6-7</strong> - High Importance</li>
+                            <li><strong>8-9</strong> - Very High to Critical</li>
+                            <li><strong>10</strong> - Absolute Priority (Deal-breaker)</li>
+                        </ul>
+                    </div>
+
+                    <button class="btn btn-primary btn-large" onclick="app.startQuestionnaire()">Start Questionnaire</button>
+                    
+                    <div class="existing-progress" id="existing-progress" style="display: none;">
+                        <p>You have answered <span id="existing-count">0</span> questions previously.</p>
+                        <button class="btn btn-secondary" onclick="app.continueQuestionnaire()">Continue Where I Left Off</button>
+                        <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questionnaire Screen -->
+            <div id="questionnaire-screen" class="screen">
+                <div class="questionnaire-content">
+                    <div class="category-header">
+                        <h2 id="category-name">Category Name</h2>
+                        <p id="category-progress">Question 1 of 8</p>
+                    </div>
+
+                    <div class="question-card">
+                        <div class="question-header">
+                            <h3 id="question-text">Question text will appear here</h3>
+                            <span id="question-id" class="question-id">Q1.1</span>
+                        </div>
+                        
+                        <div class="question-context">
+                            <p id="question-context"></p>
+                        </div>
+
+                        <div class="rating-container">
+                            <label>How important is this to you?</label>
+                            <div class="rating-scale">
+                                <button class="rating-btn" data-value="0" onclick="app.selectRating(0)">0</button>
+                                <button class="rating-btn" data-value="1" onclick="app.selectRating(1)">1</button>
+                                <button class="rating-btn" data-value="2" onclick="app.selectRating(2)">2</button>
+                                <button class="rating-btn" data-value="3" onclick="app.selectRating(3)">3</button>
+                                <button class="rating-btn" data-value="4" onclick="app.selectRating(4)">4</button>
+                                <button class="rating-btn" data-value="5" onclick="app.selectRating(5)">5</button>
+                                <button class="rating-btn" data-value="6" onclick="app.selectRating(6)">6</button>
+                                <button class="rating-btn" data-value="7" onclick="app.selectRating(7)">7</button>
+                                <button class="rating-btn" data-value="8" onclick="app.selectRating(8)">8</button>
+                                <button class="rating-btn" data-value="9" onclick="app.selectRating(9)">9</button>
+                                <button class="rating-btn" data-value="10" onclick="app.selectRating(10)">10</button>
+                            </div>
+                            <div class="rating-labels">
+                                <span>Not Important</span>
+                                <span>Critical</span>
+                            </div>
+                            <div class="selected-rating-display">
+                                <span id="selected-rating-text"></span>
+                            </div>
+                        </div>
+
+                        <div class="neutral-preference" id="neutral-preference" style="display: none;">
+                            <label>Which ring do you prefer for this?</label>
+                            <div class="preference-buttons">
+                                <button class="btn btn-preference" onclick="app.selectPreference('OURA')">Oura Ring 4</button>
+                                <button class="btn btn-preference" onclick="app.selectPreference('RINGCONN')">RingConn Gen 2</button>
+                                <button class="btn btn-preference" onclick="app.selectPreference('NONE')">No Preference</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="navigation-buttons">
+                        <button class="btn btn-secondary" onclick="app.previousQuestion()" id="prev-btn">Previous</button>
+                        <button class="btn btn-text" onclick="app.skipQuestion()">Skip</button>
+                        <button class="btn btn-primary" onclick="app.nextQuestion()" id="next-btn">Next</button>
+                    </div>
+
+                    <div class="category-navigation">
+                        <button class="btn btn-text" onclick="app.showCategoryList()">View All Categories</button>
+                        <button class="btn btn-primary" onclick="app.viewResults()">View Results</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category List Screen -->
+            <div id="category-list-screen" class="screen">
+                <div class="category-list-content">
+                    <h2>All Categories</h2>
+                    <p>Jump to any category to answer questions</p>
+                    <div id="category-list" class="category-list">
+                        <!-- Categories will be dynamically generated -->
+                    </div>
+                    <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Back to Questionnaire</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="screen">
+                <div class="results-content">
+                    <div id="results-container">
+                        <!-- Results will be dynamically generated -->
+                    </div>
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Continue Answering</button>
+                        <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>Based on comprehensive research of Oura Ring 4 and RingConn Gen 2</p>
+            <p>Data saved locally in your browser</p>
+        </footer>
+    </div>
+
+    <script src="questions.js"></script>
+    <script src="algorithm.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
