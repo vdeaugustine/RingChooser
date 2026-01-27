@@ -46,16 +46,8 @@
   function getAnsweredCount() {
     var n = 0;
     for (var id in ratings) {
-      // In the new model, all questions have a default rating of 5.
-      // So, we count questions where the user has explicitly changed the rating from 5,
-      // or where a preference has been set for neutral questions.
-      var q = questions.find(q => q.id === id);
-      if (q) {
-        if (ratings[id] !== 5) { // User changed the rating
-          n++;
-        } else if (q.favors === 'NEUTRAL' && preferences[id]) { // User set a preference for a neutral question
-          n++;
-        }
+      if (ratings[id] !== undefined) {
+        n++;
       }
     }
     return n;
@@ -167,7 +159,10 @@
     html += '<div class="category-group-container">';
 
     catQuestions.forEach(function (q) {
-      var currentRating = ratings[q.id] !== undefined ? ratings[q.id] : 5;
+      if (ratings[q.id] === undefined) {
+        ratings[q.id] = 5;
+      }
+      var currentRating = ratings[q.id];
       var cleanText = cleanQuestionText(q.question);
 
       html += '<div class="question-row" id="q-row-' + q.id + '">';
@@ -224,6 +219,7 @@
     container.innerHTML = html;
     window.scrollTo(0, 0);
     renderProgress();
+    saveToStorage();
   }
 
   function updateRatingDisplay(qid, val) {
@@ -265,9 +261,7 @@
       var cat = categories[i];
       var qs = questions.filter(function (q) { return q.categoryId === cat.id; });
       var answered = qs.filter(function (q) {
-        // A question is considered 'answered' if its rating is not the default 5,
-        // or if it's a neutral question and a preference has been set.
-        return (ratings[q.id] !== undefined && ratings[q.id] !== 5) || (q.favors === 'NEUTRAL' && preferences[q.id]);
+        return ratings[q.id] !== undefined;
       }).length;
       var div = document.createElement('div');
       div.className = 'category-list-item';
