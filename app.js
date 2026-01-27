@@ -11,9 +11,9 @@
 
   var questions = [];
   var categories = [];
-  var currentIndex = 0;
+  var currentCategoryIndex = 0;
   var ratings = {};
-  var preferences = {};
+  var preferences = {}; // For questions that need a tie-breaker
 
   function loadFromStorage() {
     try {
@@ -22,12 +22,12 @@
         var data = JSON.parse(raw);
         if (data.ratings) ratings = data.ratings;
         if (data.preferences) preferences = data.preferences;
-        if (typeof data.currentIndex === 'number') currentIndex = Math.min(Math.max(0, data.currentIndex), questions.length - 1);
+        if (typeof data.currentCategoryIndex === 'number') currentCategoryIndex = Math.min(Math.max(0, data.currentCategoryIndex), categories.length - 1);
       }
     } catch (e) {
       ratings = {};
       preferences = {};
-      currentIndex = 0;
+      currentCategoryIndex = 0;
     }
   }
 
@@ -36,7 +36,7 @@
       var data = {
         ratings: ratings,
         preferences: preferences,
-        currentIndex: currentIndex,
+        currentCategoryIndex: currentCategoryIndex,
         savedAt: new Date().toISOString()
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -46,7 +46,17 @@
   function getAnsweredCount() {
     var n = 0;
     for (var id in ratings) {
-      if (ratings[id] !== undefined && ratings[id] !== 'SKIP') n++;
+      // In the new model, all questions have a default rating of 5.
+      // So, we count questions where the user has explicitly changed the rating from 5,
+      // or where a preference has been set for neutral questions.
+      var q = questions.find(q => q.id === id);
+      if (q) {
+        if (ratings[id] !== 5) { // User changed the rating
+          n++;
+        } else if (q.favors === 'NEUTRAL' && preferences[id]) { // User set a preference for a neutral question
+          n++;
+        }
+      }
     }
     return n;
   }
@@ -58,6 +68,7 @@
     }
     var el = document.getElementById(id);
     if (el) el.classList.add('active');
+    window.scrollTo(0, 0);
   }
 
   function renderWelcome() {
@@ -75,90 +86,169 @@
   }
 
   function renderProgress() {
-    var count = getAnsweredCount();
-    var total = questions.length;
-    var pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    // Update global progress bar based on categories
+    var totalCategories = categories.length;
+    var pct = (currentCategoryIndex / totalCategories) * 100;
     var fill = document.getElementById('progress-fill');
+    if (fill) fill.style.width = pct + '%';
+
     var countSpan = document.getElementById('progress-count');
     var pctSpan = document.getElementById('progress-percent');
-    if (fill) fill.style.width = pct + '%';
-    if (countSpan) countSpan.textContent = count + ' of ' + total + ' questions answered';
-    if (pctSpan) pctSpan.textContent = pct + '%';
+    if (countSpan) countSpan.textContent = 'Category ' + (currentCategoryIndex + 1) + ' of ' + totalCategories;
+    if (pctSpan) pctSpan.textContent = Math.round(pct) + '%';
   }
 
-  function renderQuestion() {
-    if (questions.length === 0) return;
-    var q = questions[currentIndex];
-    var textEl = document.getElementById('question-text');
-    var idEl = document.getElementById('question-id');
-    var contextEl = document.getElementById('question-context');
-    var catNameEl = document.getElementById('category-name');
-    var catProgressEl = document.getElementById('category-progress');
+  function cleanQuestionText(text) {
+    // Remove common prefixes case-insensitively
+    var t = text;
+    var prefixes = [
+      "How important is it to you to",
+      "How important is it to you that",
+      "How important is it that",
+      "How important is",
+      "How much do you value",
+      "How critical is",
+      "How valuable is",
+      "How concerned are you about",
+      "How willing are you to",
+      "Do you prefer",
+      "Do you have",
+      "Do you need",
+      "Are you",
+      "Is the",
+      "Is"
+    ];
 
-    if (textEl) textEl.textContent = q.question;
-    if (idEl) idEl.textContent = q.id;
-    if (contextEl) contextEl.textContent = q.context || '';
-    var inCat = questions.filter(function (x) { return x.categoryId === q.categoryId; });
-    var idxInCat = inCat.findIndex(function (x) { return x.id === q.id; }) + 1;
-    if (catNameEl) catNameEl.textContent = (categories.find(function (c) { return c.id === q.categoryId; }) || {}).name || q.categoryId;
-    if (catProgressEl) catProgressEl.textContent = 'Question ' + idxInCat + ' of ' + inCat.length;
+    for (var i = 0; i < prefixes.length; i++) {
+      var p = prefixes[i];
+      var regex = new RegExp("^" + p + "\\s*", "i"); // Added \\s* for optional space
+      if (regex.test(t)) {
+        t = t.replace(regex, "");
+        // Capitalize first letter of remaining text
+        t = t.charAt(0).toUpperCase() + t.slice(1);
+        break; // Only remove one prefix
+      }
+    }
+    return t;
+  }
 
-    var neutralDiv = document.getElementById('neutral-preference');
-    if (neutralDiv) {
+  function renderCategory() {
+    var cat = categories[currentCategoryIndex];
+    if (!cat) return;
+
+    var container = document.getElementById('question-container');
+    if (!container) return; // Should not happen
+
+    var catQuestions = questions.filter(function (q) {
+      return q.categoryId === cat.id;
+    });
+
+    var html = '';
+
+    // Header
+    html += '<div class="category-header" style="text-align: center;">';
+    html += '  <p>Category ' + (currentCategoryIndex + 1) + ' of ' + categories.length + '</p>';
+    html += '  <h2>' + cat.name + '</h2>';
+    html += '</div>';
+
+    if (cat.description) {
+      html += '<div class="category-description" style="margin-bottom: 24px; text-align: center; color: var(--text-muted); font-size: 0.95rem;">' + cat.description + '</div>';
+    }
+
+    html += '<div class="category-intro">';
+    html += '  <p style="font-weight: 600;">How important are these factors to you?</p>';
+    html += '</div>';
+
+    html += '<div class="category-group-container">';
+
+    catQuestions.forEach(function (q) {
+      var currentRating = ratings[q.id] !== undefined ? ratings[q.id] : 5;
+      var cleanText = cleanQuestionText(q.question);
+
+      html += '<div class="question-row" id="q-row-' + q.id + '">';
+      html += '  <div class="question-text-compact">' + cleanText + '</div>';
+
+      if (q.context) {
+        html += '  <div class="question-context-compact">' + q.context + '</div>';
+      }
+
+      // Rating Controls (0-10)
+      html += '  <div class="rating-scale">';
+      for (var i = 0; i <= 10; i++) {
+        var isSelected = currentRating === i ? 'selected' : '';
+        html += '<button class="rating-btn ' + isSelected + '" onclick="app.setRating(\'' + q.id + '\', ' + i + ')">' + i + '</button>';
+      }
+      html += '  </div>';
+
+      // Preference Toggle (if Neutral flavor)
       if (q.favors === 'NEUTRAL') {
-        neutralDiv.style.display = 'block';
-        var prefVal = preferences[q.id];
-        var prefBtns = neutralDiv.querySelectorAll('.btn-preference');
-        for (var j = 0; j < prefBtns.length; j++) {
-          prefBtns[j].classList.remove('selected');
-          var onclickStr = prefBtns[j].getAttribute('onclick');
-          if (prefVal === 'OURA' && onclickStr.indexOf("'OURA'") !== -1) prefBtns[j].classList.add('selected');
-          if (prefVal === 'RINGCONN' && onclickStr.indexOf("'RINGCONN'") !== -1) prefBtns[j].classList.add('selected');
-          if (!prefVal && onclickStr.indexOf("'NONE'") !== -1) prefBtns[j].classList.add('selected');
-        }
-      } else {
-        neutralDiv.style.display = 'none';
+        var currentPref = preferences[q.id];
+        var selOura = currentPref === 'OURA' ? 'selected' : '';
+        var selRC = currentPref === 'RINGCONN' ? 'selected' : '';
+        var selNone = !currentPref ? 'selected' : '';
+
+        html += '  <div class="neutral-preference" style="margin-top: 16px; padding: 16px; border: 1px dashed var(--border); background: var(--box-bg-alt); display: block;">';
+        html += '    <label style="margin-bottom: 8px; display: block; font-size: 0.8rem; font-weight: 700;">Which ring do you prefer for this?</label>';
+        html += '    <div style="display: flex; gap: 8px;">';
+        html += '      <button class="btn btn-preference ' + selOura + '" style="flex:1; padding: 8px; font-size: 0.85rem;" onclick="app.setPreference(\'' + q.id + '\', \'OURA\')">Oura</button>';
+        html += '      <button class="btn btn-preference ' + selRC + '" style="flex:1; padding: 8px; font-size: 0.85rem;" onclick="app.setPreference(\'' + q.id + '\', \'RINGCONN\')">RingConn</button>';
+        html += '      <button class="btn btn-preference ' + selNone + '" style="flex:1; padding: 8px; font-size: 0.85rem;" onclick="app.setPreference(\'' + q.id + '\', \'NONE\')">No Pref</button>';
+        html += '    </div>';
+        html += '  </div>';
       }
-    }
 
-    var ratingVal = ratings[q.id];
-    var btns = document.querySelectorAll('.rating-btn');
-    for (var i = 0; i < btns.length; i++) {
-      var v = parseInt(btns[i].getAttribute('data-value'), 10);
-      btns[i].classList.remove('selected');
-      if (ratingVal !== undefined && ratingVal !== 'SKIP' && v === ratingVal) {
-        btns[i].classList.add('selected');
-      }
-    }
+      html += '</div>'; // end question-row
+    });
 
-    var selectedText = document.getElementById('selected-rating-text');
-    if (selectedText) {
-      if (ratingVal === 'SKIP') {
-        selectedText.textContent = 'Skipped';
-      } else if (ratingVal !== undefined) {
-        selectedText.textContent = 'Selected: ' + ratingVal + '/10';
-      } else {
-        selectedText.textContent = '';
-      }
-    }
+    html += '</div>'; // end category-group-container
 
-    var prevBtn = document.getElementById('prev-btn');
-    var nextBtn = document.getElementById('next-btn');
-    if (prevBtn) prevBtn.disabled = currentIndex <= 0;
-    if (nextBtn) nextBtn.disabled = currentIndex >= questions.length - 1;
+    // Simplified Navigation Footer
+    html += '<div class="navigation-buttons" style="margin-top: 48px;">';
+    html += '  <button class="btn btn-secondary" onclick="app.previousCategory()">' + (currentCategoryIndex === 0 ? 'Home' : 'Previous Category') + '</button>';
+    var nextText = currentCategoryIndex === categories.length - 1 ? 'Finish Analysis' : 'Next Category';
+    html += '  <button class="btn btn-primary" onclick="app.nextCategory()">' + nextText + '</button>';
+    html += '</div>';
 
+    // Bottom Secondary Links
+    html += '<div class="category-navigation" style="margin-top: 32px; border: none; padding-top: 0; display: flex; gap: 16px;">';
+    html += '  <button class="btn btn-text" onclick="app.showCategoryList()" style="font-size: 0.8rem;">Jump to Category</button>';
+    html += '  <button class="btn btn-text" onclick="app.viewResults()" style="font-size: 0.8rem; color: var(--text-main);">View Results Now</button>';
+    html += '</div>';
+
+    container.innerHTML = html;
+    window.scrollTo(0, 0);
     renderProgress();
   }
 
-  function ratingLabel(val) {
-    if (val === 0) return 'Not Important';
-    if (val <= 2) return 'Very Low';
-    if (val <= 4) return 'Low / Below Average';
-    if (val === 5) return 'Moderate';
-    if (val <= 7) return 'High';
-    if (val <= 9) return 'Very High / Critical';
-    if (val === 10) return 'Absolute Priority (Deal-breaker)';
-    return '';
+  function updateRatingDisplay(qid, val) {
+    // Find the specific question row
+    var qRow = document.getElementById('q-row-' + qid);
+    if (qRow) {
+      var buttons = qRow.querySelectorAll('.rating-btn');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('selected');
+        if (parseInt(buttons[i].getAttribute('data-value'), 10) === val) {
+          buttons[i].classList.add('selected');
+        }
+      }
+    }
+  }
+
+  function updatePreferenceDisplay(qid, val) {
+    var qRow = document.getElementById('q-row-' + qid);
+    if (qRow) {
+      var prefDiv = qRow.querySelector('.neutral-preference');
+      if (prefDiv) {
+        var prefBtns = prefDiv.querySelectorAll('.btn-preference');
+        for (var i = 0; i < prefBtns.length; i++) {
+          prefBtns[i].classList.remove('selected');
+          var onclickStr = prefBtns[i].getAttribute('onclick');
+          if (val === 'OURA' && onclickStr.indexOf("'OURA'") !== -1) prefBtns[i].classList.add('selected');
+          if (val === 'RINGCONN' && onclickStr.indexOf("'RINGCONN'") !== -1) prefBtns[i].classList.add('selected');
+          if (val === 'NONE' && onclickStr.indexOf("'NONE'") !== -1) prefBtns[i].classList.add('selected');
+        }
+      }
+    }
   }
 
   function buildCategoryList() {
@@ -168,19 +258,18 @@
     for (var i = 0; i < categories.length; i++) {
       var cat = categories[i];
       var qs = questions.filter(function (q) { return q.categoryId === cat.id; });
-      var answered = qs.filter(function (q) { return ratings[q.id] !== undefined && ratings[q.id] !== 'SKIP'; }).length;
+      var answered = qs.filter(function (q) {
+        // A question is considered 'answered' if its rating is not the default 5,
+        // or if it's a neutral question and a preference has been set.
+        return (ratings[q.id] !== undefined && ratings[q.id] !== 5) || (q.favors === 'NEUTRAL' && preferences[q.id]);
+      }).length;
       var div = document.createElement('div');
       div.className = 'category-list-item';
       div.innerHTML = '<strong>' + cat.name + '</strong><span>' + answered + ' / ' + qs.length + ' answered</span>';
       (function (idx) {
-        var firstQ = questions.findIndex(function (q) { return q.categoryId === cat.id; });
-        if (firstQ >= 0) {
-          div.onclick = function () {
-            currentIndex = firstQ;
-            showScreen('questionnaire-screen');
-            renderQuestion();
-          };
-        }
+        div.onclick = function () {
+          app.jumpToCategory(idx);
+        };
       })(i);
       container.appendChild(div);
     }
@@ -377,83 +466,90 @@
     },
 
     startQuestionnaire: function () {
-      currentIndex = 0;
       showScreen('questionnaire-screen');
-      renderQuestion();
+      currentCategoryIndex = 0;
+      renderCategory();
     },
 
     continueQuestionnaire: function () {
       showScreen('questionnaire-screen');
-      renderQuestion();
-    },
-
-    selectRating: function (val) {
-      if (questions.length === 0) return;
-      var q = questions[currentIndex];
-      ratings[q.id] = val;
-      saveToStorage();
-      renderQuestion();
-    },
-
-    selectPreference: function (pref) {
-      if (questions.length === 0) return;
-      var q = questions[currentIndex];
-      preferences[q.id] = pref === 'NONE' ? null : pref;
-      saveToStorage();
-      renderQuestion();
-    },
-
-    skipQuestion: function () {
-      if (questions.length === 0) return;
-      var q = questions[currentIndex];
-      ratings[q.id] = 'SKIP';
-      if (q.favors === 'NEUTRAL') preferences[q.id] = null;
-      saveToStorage();
-      app.nextQuestion();
-    },
-
-    nextQuestion: function () {
-      if (currentIndex < questions.length - 1) {
-        currentIndex++;
-        showScreen('questionnaire-screen');
-        renderQuestion();
-        saveToStorage();
-      }
-    },
-
-    previousQuestion: function () {
-      if (currentIndex > 0) {
-        currentIndex--;
-        showScreen('questionnaire-screen');
-        renderQuestion();
-        saveToStorage();
-      }
-    },
-
-    showCategoryList: function () {
-      buildCategoryList();
-      showScreen('category-list-screen');
-    },
-
-    returnToQuestionnaire: function () {
-      showScreen('questionnaire-screen');
-      renderQuestion();
-    },
-
-    viewResults: function () {
-      renderResults();
-      showScreen('results-screen');
+      renderCategory();
     },
 
     resetProgress: function () {
-      if (typeof confirm !== 'undefined' && !confirm('Clear all answers and start over?')) return;
-      ratings = {};
-      preferences = {};
-      currentIndex = 0;
+      if (confirm('Are you sure you want to start over?')) {
+        ratings = {};
+        preferences = {};
+        currentCategoryIndex = 0;
+
+        // Re-init defaults
+        questions.forEach(function (q) {
+          ratings[q.id] = 5;
+        });
+
+        saveToStorage();
+        renderProgress();
+        document.getElementById('welcome-screen').classList.add('active');
+        document.getElementById('questionnaire-screen').classList.remove('active');
+        document.getElementById('existing-progress').style.display = 'none';
+      }
+    },
+
+    // --- Navigation ---
+
+    nextCategory: function () {
+      if (currentCategoryIndex < categories.length - 1) {
+        currentCategoryIndex++;
+        window.scrollTo(0, 0);
+        renderCategory();
+        saveToStorage();
+      } else {
+        app.viewResults();
+      }
+    },
+
+    previousCategory: function () {
+      if (currentCategoryIndex > 0) {
+        currentCategoryIndex--;
+        window.scrollTo(0, 0);
+        renderCategory();
+        saveToStorage();
+      } else {
+        showScreen('welcome-screen');
+      }
+    },
+
+    // --- Data Entry ---
+
+    setRating: function (questionId, value) {
+      ratings[questionId] = parseInt(value, 10);
       saveToStorage();
-      showScreen('welcome-screen');
-      renderWelcome();
-      renderProgress();
+      // Update the display for this specific question
+      updateRatingDisplay(questionId, value);
+    },
+
+    setPreference: function (questionId, value) {
+      preferences[questionId] = value === 'NONE' ? null : value;
+      saveToStorage();
+      updatePreferenceDisplay(questionId, value);
+    },
+
+    viewResults: function () {
+      // Ensure we save current state before viewing
+      saveToStorage();
+      showScreen('results-screen');
+      renderResults();
+    },
+
+    showCategoryList: function () {
+      showScreen('category-list-screen');
+      buildCategoryList();
+    },
+
+    jumpToCategory: function (index) {
+      currentCategoryIndex = index;
+      showScreen('questionnaire-screen');
+      renderCategory();
     }
   };
 

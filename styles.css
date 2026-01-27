@@ -591,6 +591,70 @@ main {
   color: var(--text-main);
 }
 
+/* Category Group Layout */
+.category-group-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.category-intro {
+  text-align: center;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.question-row {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.question-row:hover {
+  border-color: var(--text-main);
+  background: var(--box-bg-alt);
+}
+
+.question-text-compact {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.question-context-compact {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--box-bg);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  border-left: 2px solid var(--border);
+}
+
+/* Compact Rating Input */
+.rating-compact-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rating-value-display {
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 40px;
+  text-align: center;
+}
+
+/* Ensure cursors are pointers */
+button, .rating-btn, .btn, .category-list-item {
+  cursor: pointer;
+}
+
 .recommendation-card {
   background: var(--box-bg);
   color: var(--text-main);
