@@ -99,18 +99,20 @@
   }
 
   function cleanQuestionText(text) {
-    // Remove common prefixes case-insensitively
-    var t = text;
+    if (!text) return "";
+    var t = text.trim();
     var prefixes = [
-      "How important is it to you to",
       "How important is it to you that",
+      "How important is it to you to",
       "How important is it that",
+      "How important is it to",
       "How important is",
       "How much do you value",
       "How critical is",
       "How valuable is",
       "How concerned are you about",
       "How willing are you to",
+      "If you were to",
       "Do you prefer",
       "Do you have",
       "Do you need",
@@ -121,12 +123,15 @@
 
     for (var i = 0; i < prefixes.length; i++) {
       var p = prefixes[i];
-      var regex = new RegExp("^" + p + "\\s*", "i"); // Added \\s* for optional space
+      var regex = new RegExp("^" + p + "\\s*", "i");
       if (regex.test(t)) {
-        t = t.replace(regex, "");
-        // Capitalize first letter of remaining text
-        t = t.charAt(0).toUpperCase() + t.slice(1);
-        break; // Only remove one prefix
+        var result = t.replace(regex, "");
+        if (result.length > 0) {
+          t = result.charAt(0).toUpperCase() + result.slice(1);
+          // If the last character is a question mark, keep it, otherwise add one if it was a question
+          if (!t.endsWith('?') && text.includes('?')) t += '?';
+          return t;
+        }
       }
     }
     return t;
@@ -203,16 +208,17 @@
     html += '</div>'; // end category-group-container
 
     // Simplified Navigation Footer
-    html += '<div class="navigation-buttons" style="margin-top: 48px;">';
-    html += '  <button class="btn btn-secondary" onclick="app.previousCategory()">' + (currentCategoryIndex === 0 ? 'Home' : 'Previous Category') + '</button>';
-    var nextText = currentCategoryIndex === categories.length - 1 ? 'Finish Analysis' : 'Next Category';
-    html += '  <button class="btn btn-primary" onclick="app.nextCategory()">' + nextText + '</button>';
+    html += '<div class="navigation-buttons" style="margin-top: 48px; display: flex; gap: 12px; justify-content: center;">';
+    html += '  <button class="btn btn-secondary" style="flex: 1;" onclick="app.previousCategory()">' + (currentCategoryIndex === 0 ? 'Home' : 'Previous') + '</button>';
+    html += '  <button class="btn btn-text" style="flex: 0.5;" onclick="app.skipCategory()">Skip</button>';
+    var nextText = currentCategoryIndex === categories.length - 1 ? 'Finish' : 'Next';
+    html += '  <button class="btn btn-primary" style="flex: 1;" onclick="app.nextCategory()">' + nextText + '</button>';
     html += '</div>';
 
     // Bottom Secondary Links
-    html += '<div class="category-navigation" style="margin-top: 32px; border: none; padding-top: 0; display: flex; gap: 16px;">';
-    html += '  <button class="btn btn-text" onclick="app.showCategoryList()" style="font-size: 0.8rem;">Jump to Category</button>';
-    html += '  <button class="btn btn-text" onclick="app.viewResults()" style="font-size: 0.8rem; color: var(--text-main);">View Results Now</button>';
+    html += '<div class="category-navigation" style="margin-top: 32px; border: none; padding-top: 0; display: flex; gap: 16px; justify-content: center;">';
+    html += '  <button class="btn btn-text" onclick="app.showCategoryList()" style="font-size: 0.8rem; text-decoration: underline;">All Categories</button>';
+    html += '  <button class="btn btn-text" onclick="app.viewResults()" style="font-size: 0.8rem; color: var(--text-main); text-decoration: underline;">View Results Now</button>';
     html += '</div>';
 
     container.innerHTML = html;
@@ -546,10 +552,25 @@
       buildCategoryList();
     },
 
+    returnToQuestionnaire: function () {
+      showScreen('questionnaire-screen');
+      renderCategory();
+    },
+
+    returnToHome: function () {
+      showScreen('welcome-screen');
+      renderWelcome();
+    },
+
     jumpToCategory: function (index) {
       currentCategoryIndex = index;
       showScreen('questionnaire-screen');
       renderCategory();
+    },
+
+    skipCategory: function () {
+      // Just move to next category. Since default is 5, this effectively skips.
+      app.nextCategory();
     }
   };
 

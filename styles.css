@@ -87,13 +87,34 @@ body {
   position: relative;
 }
 
-/* Header */
+/* Header & Navigation Spacing */
 header {
-  padding: 48px 24px 32px;
+  padding: 40px 24px;
   background: var(--background);
   color: var(--text-main);
   text-align: center;
   border-bottom: 1px solid var(--border);
+  transition: padding 0.3s ease;
+}
+
+.screen:not(.active) {
+  display: none;
+}
+
+#app:has(.screen.active:not(#welcome-screen)) header {
+  padding: 16px 24px;
+}
+
+#app:has(.screen.active:not(#welcome-screen)) .progress-container {
+  margin-bottom: 12px;
+}
+
+#app:has(.screen.active:not(#welcome-screen)) header h1 {
+  font-size: 1.2rem;
+}
+
+#app:has(.screen.active:not(#welcome-screen)) header p {
+  display: none;
 }
 
 header h1 {
@@ -103,6 +124,7 @@ header h1 {
   font-weight: 700;
   letter-spacing: -0.04em;
   color: var(--text-main);
+  transition: font-size 0.3s ease;
 }
 
 header p {
@@ -117,12 +139,14 @@ header p {
 .progress-container {
   padding: 24px 24px 0;
   background: var(--card-bg);
+  margin-bottom: 24px;
+  transition: margin-bottom 0.3s ease;
 }
 
 .progress-bar {
-  height: 6px;
-  background: var(--progress-bg);
-  border-radius: var(--radius-lg);
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
 }

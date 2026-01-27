@@ -65,56 +65,8 @@
             <!-- Questionnaire Screen -->
             <div id="questionnaire-screen" class="screen">
                 <div class="questionnaire-content">
-                            <span id="question-id" class="question-id">Q1.1</span>
-                        </div>
-                        
-                        <div class="question-context">
-                            <p id="question-context"></p>
-                        </div>
-
-                        <div class="rating-container">
-                            <label>How important is this to you?</label>
-                            <div class="rating-scale">
-                                <button class="rating-btn" data-value="0" onclick="app.selectRating(0)">0</button>
-                                <button class="rating-btn" data-value="1" onclick="app.selectRating(1)">1</button>
-                                <button class="rating-btn" data-value="2" onclick="app.selectRating(2)">2</button>
-                                <button class="rating-btn" data-value="3" onclick="app.selectRating(3)">3</button>
-                                <button class="rating-btn" data-value="4" onclick="app.selectRating(4)">4</button>
-                                <button class="rating-btn" data-value="5" onclick="app.selectRating(5)">5</button>
-                                <button class="rating-btn" data-value="6" onclick="app.selectRating(6)">6</button>
-                                <button class="rating-btn" data-value="7" onclick="app.selectRating(7)">7</button>
-                                <button class="rating-btn" data-value="8" onclick="app.selectRating(8)">8</button>
-                                <button class="rating-btn" data-value="9" onclick="app.selectRating(9)">9</button>
-                                <button class="rating-btn" data-value="10" onclick="app.selectRating(10)">10</button>
-                            </div>
-                            <div class="rating-labels">
-                                <span>Not Important</span>
-                                <span>Critical</span>
-                            </div>
-                            <div class="selected-rating-display">
-                                <span id="selected-rating-text"></span>
-                            </div>
-                        </div>
-
-                        <div class="neutral-preference" id="neutral-preference" style="display: none;">
-                            <label>Which ring do you prefer for this?</label>
-                            <div class="preference-buttons">
-                                <button class="btn btn-preference" onclick="app.selectPreference('OURA')">Oura Ring 4</button>
-                                <button class="btn btn-preference" onclick="app.selectPreference('RINGCONN')">RingConn Gen 2</button>
-                                <button class="btn btn-preference" onclick="app.selectPreference('NONE')">No Preference</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="navigation-buttons">
-                        <button class="btn btn-secondary" onclick="app.previousQuestion()" id="prev-btn">Previous</button>
-                        <button class="btn btn-text" onclick="app.skipQuestion()">Skip</button>
-                        <button class="btn btn-primary" onclick="app.nextQuestion()" id="next-btn">Next</button>
-                    </div>
-
-                    <div class="category-navigation">
-                        <button class="btn btn-secondary" onclick="app.showCategoryList()">All Categories</button>
-                        <button class="btn btn-primary" onclick="app.viewResults()">View Results</button>
+                    <div id="question-container">
+                        <!-- Questions and category info injected via app.renderCategory() -->
                     </div>
                 </div>
             </div>
@@ -127,7 +79,9 @@
                     <div id="category-list" class="category-list">
                         <!-- Categories will be dynamically generated -->
                     </div>
-                    <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Back to Questionnaire</button>
+                    <div style="margin-top: 32px; text-align: center;">
+                        <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Back to Questionnaire</button>
+                    </div>
                 </div>
             </div>
 
