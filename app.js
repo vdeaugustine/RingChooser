@@ -176,7 +176,7 @@
       html += '  <div class="rating-scale">';
       for (var i = 0; i <= 10; i++) {
         var isSelected = currentRating === i ? 'selected' : '';
-        html += '<button class="rating-btn ' + isSelected + '" onclick="app.setRating(\'' + q.id + '\', ' + i + ')">' + i + '</button>';
+        html += '<button class="rating-btn ' + isSelected + '" data-value="' + i + '" onclick="app.setRating(\'' + q.id + '\', ' + i + ')">' + i + '</button>';
       }
       html += '  </div>';
 

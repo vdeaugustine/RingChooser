@@ -436,17 +436,22 @@ main {
 }
 
 .rating-btn:hover {
-  background: var(--text-main);
-  color: var(--background);
-  transform: scale(1.1);
+  border-color: var(--text-main);
+  background: var(--box-bg-alt);
+  transform: translateY(-2px);
   z-index: 10;
 }
 
 .rating-btn.selected {
-  background: var(--text-main);
-  color: var(--background);
+  background: var(--text-main) !important;
+  color: var(--background) !important;
   border-color: var(--text-main);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.rating-btn.selected:hover {
+  transform: scale(1.05) translateY(-2px);
 }
 
 .rating-labels {
