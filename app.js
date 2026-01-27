@@ -8,12 +8,18 @@
   'use strict';
 
   var STORAGE_KEY = 'smart_ring_decision_data';
+  var NUM_SLOTS = 3;
+
+  function getSlotKey(slotIndex) {
+    return 'smart_ring_decision_slot_' + slotIndex;
+  }
 
   var questions = [];
   var categories = [];
   var currentCategoryIndex = 0;
   var ratings = {};
   var preferences = {}; // For questions that need a tie-breaker
+  var activeSlotIndex = 0; // 0 = none, 1..NUM_SLOTS = that slot is current
 
   function loadFromStorage() {
     try {
@@ -23,11 +29,13 @@
         if (data.ratings) ratings = data.ratings;
         if (data.preferences) preferences = data.preferences;
         if (typeof data.currentCategoryIndex === 'number') currentCategoryIndex = Math.min(Math.max(0, data.currentCategoryIndex), categories.length - 1);
+        if (typeof data.activeSlotIndex === 'number' && data.activeSlotIndex >= 0 && data.activeSlotIndex <= NUM_SLOTS) activeSlotIndex = data.activeSlotIndex;
       }
     } catch (e) {
       ratings = {};
       preferences = {};
       currentCategoryIndex = 0;
+      activeSlotIndex = 0;
     }
   }
 
@@ -37,10 +45,173 @@
         ratings: ratings,
         preferences: preferences,
         currentCategoryIndex: currentCategoryIndex,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
+        activeSlotIndex: activeSlotIndex
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) { }
+  }
+
+  function getSlotSummary(slotIndex) {
+    try {
+      var raw = localStorage.getItem(getSlotKey(slotIndex));
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      var count = 0;
+      if (data.ratings && typeof data.ratings === 'object') {
+        for (var k in data.ratings) { if (data.ratings[k] !== undefined) count++; }
+      }
+      return { count: count, savedAt: data.savedAt || null };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveToSlot(slotIndex) {
+    if (slotIndex < 1 || slotIndex > NUM_SLOTS) return;
+    try {
+      var data = {
+        ratings: JSON.parse(JSON.stringify(ratings)),
+        preferences: JSON.parse(JSON.stringify(preferences)),
+        currentCategoryIndex: currentCategoryIndex,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(getSlotKey(slotIndex), JSON.stringify(data));
+      activeSlotIndex = slotIndex;
+      saveToStorage();
+    } catch (e) { }
+  }
+
+  function loadSlot(slotIndex) {
+    if (slotIndex < 1 || slotIndex > NUM_SLOTS) return;
+    try {
+      activeSlotIndex = slotIndex;
+      var raw = localStorage.getItem(getSlotKey(slotIndex));
+      if (!raw) {
+        ratings = {};
+        preferences = {};
+        currentCategoryIndex = 0;
+        saveToStorage();
+        return;
+      }
+      var data = JSON.parse(raw);
+      if (data.ratings) ratings = data.ratings;
+      if (data.preferences) preferences = data.preferences;
+      if (typeof data.currentCategoryIndex === 'number') currentCategoryIndex = Math.min(Math.max(0, data.currentCategoryIndex), categories.length - 1);
+      saveToStorage();
+    } catch (e) { }
+  }
+
+  function exportAsCsv() {
+    var rows = ['questionId', 'questionText', 'categoryId', 'rating', 'preference'];
+    for (var i = 0; i < questions.length; i++) {
+      var q = questions[i];
+      var r = ratings[q.id] !== undefined ? ratings[q.id] : '';
+      var p = (q.favors === 'NEUTRAL' && preferences[q.id]) ? preferences[q.id] : '';
+      var text = (q.question || '').replace(/"/g, '""');
+      rows.push([q.id, '"' + text + '"', q.categoryId || '', r, p].join(','));
+    }
+    var csv = rows.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ring-chooser-answers-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function parseCsvRow(line) {
+    var out = [];
+    var inQuotes = false;
+    var cur = '';
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') {
+        inQuotes = !inQuotes;
+      } else if ((c === ',' && !inQuotes) || c === '\r' || c === '\n') {
+        out.push(cur);
+        cur = '';
+        if (c === '\r' || c === '\n') break;
+      } else {
+        cur += c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function importFromCsv(file) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var text = (ev.target && ev.target.result) ? String(ev.target.result) : '';
+      var lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length > 0; });
+      if (lines.length < 2) return;
+      var header = parseCsvRow(lines[0]);
+      var colQid = -1;
+      var colRating = -1;
+      var colPref = -1;
+      for (var h = 0; h < header.length; h++) {
+        var hd = (header[h] || '').toLowerCase().replace(/^\s*|\s*$/g, '');
+        if (hd === 'questionid' || hd === 'question_id') colQid = h;
+        if (hd === 'rating') colRating = h;
+        if (hd === 'preference') colPref = h;
+      }
+      if (colQid < 0 || colRating < 0) return;
+      var idSet = {};
+      for (var j = 0; j < questions.length; j++) idSet[questions[j].id] = questions[j];
+      var imported = 0;
+      for (var i = 1; i < lines.length; i++) {
+        var cells = parseCsvRow(lines[i]);
+        var qid = (cells[colQid] || '').trim();
+        if (!idSet[qid]) continue;
+        var r = parseInt(cells[colRating], 10);
+        if (r >= 0 && r <= 10) {
+          ratings[qid] = r;
+          imported++;
+        }
+        if (colPref >= 0 && idSet[qid].favors === 'NEUTRAL') {
+          var p = (cells[colPref] || '').trim().toUpperCase();
+          if (p === 'OURA' || p === 'RINGCONN' || p === 'NONE' || p === '') preferences[qid] = (p === 'NONE' || p === '') ? null : p;
+        }
+      }
+      saveToStorage();
+      renderWelcome();
+      renderProgress();
+      var container = document.getElementById('question-container');
+      if (container && container.innerHTML) renderCategory();
+      alert('Imported ' + imported + ' answers.');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function randomizeAllAnswers() {
+    var msg = 'This will overwrite all your current answers. If you want to keep them, export to CSV or save to a slot first. Continue?';
+    if (!confirm(msg)) return;
+    var blockerIds = (global.SmartRingAlgorithm && global.SmartRingAlgorithm.getBlockerQuestionIds)
+      ? global.SmartRingAlgorithm.getBlockerQuestionIds() : [];
+    var blockerSet = {};
+    for (var b = 0; b < blockerIds.length; b++) blockerSet[blockerIds[b]] = true;
+    for (var i = 0; i < questions.length; i++) {
+      var q = questions[i];
+      var maxVal = blockerSet[q.id] ? 9 : 10;
+      ratings[q.id] = Math.floor(Math.random() * (maxVal + 1));
+      if (q.favors === 'NEUTRAL') {
+        var choices = ['OURA', 'RINGCONN', null];
+        preferences[q.id] = choices[Math.floor(Math.random() * 3)];
+      }
+    }
+    currentCategoryIndex = 0;
+    saveToStorage();
+    renderWelcome();
+    renderProgress();
+    var active = document.querySelector('.screen.active');
+    if (active && active.id === 'welcome-screen') renderWelcome();
+    else if (active && (active.id === 'questionnaire-screen' || active.id === 'category-list-screen')) {
+      showScreen('questionnaire-screen');
+      renderCategory();
+    } else if (active && active.id === 'results-screen') {
+      renderResults();
+    }
   }
 
   function getAnsweredCount() {
@@ -75,18 +246,37 @@
         existing.style.display = 'none';
       }
     }
+    if (typeof renderSlotsUI === 'function') renderSlotsUI();
   }
 
   function renderProgress() {
     // Update global progress bar based on categories
     var totalCategories = categories.length;
     var pct = (currentCategoryIndex / totalCategories) * 100;
+
+    // If we are on the results screen or have answered everything, show 100%
+    var resultsScreen = document.getElementById('results-screen');
+    var isResults = resultsScreen && resultsScreen.classList.contains('active');
+    var answered = getAnsweredCount();
+    var totalQs = questions.length;
+
+    if (isResults || (answered === totalQs && totalQs > 0)) {
+      pct = 100;
+    }
+
     var fill = document.getElementById('progress-fill');
     if (fill) fill.style.width = pct + '%';
 
     var countSpan = document.getElementById('progress-count');
     var pctSpan = document.getElementById('progress-percent');
-    if (countSpan) countSpan.textContent = 'Category ' + (currentCategoryIndex + 1) + ' of ' + totalCategories;
+
+    if (countSpan) {
+      if (pct === 100) {
+        countSpan.textContent = 'Analysis Complete';
+      } else {
+        countSpan.textContent = 'Category ' + (currentCategoryIndex + 1) + ' of ' + totalCategories;
+      }
+    }
     if (pctSpan) pctSpan.textContent = Math.round(pct) + '%';
   }
 
@@ -446,19 +636,32 @@
     for (var k in ratings) {
       if (ratings[k] >= 8) {
         var q = questions.find(function (z) { return z.id === k; });
-        if (q) drivers.push({ text: q.question.substring(0, 40) + '...', score: ratings[k] });
+        if (q) {
+          drivers.push({
+            id: q.id,
+            fullText: q.question,
+            displayShort: q.question.length > 50 ? q.question.substring(0, 47) + '...' : q.question,
+            context: q.context || '',
+            score: ratings[k]
+          });
+        }
       }
     }
-    drivers = drivers.slice(0, 4);
+    // Sort drivers by score descending
+    drivers.sort(function (a, b) { return b.score - a.score; });
+    var displayDrivers = drivers.slice(0, 4);
 
-    if (drivers.length > 0) {
-      for (var i = 0; i < drivers.length; i++) {
-        html += '<div class="driver-card" style="background: var(--box-bg-alt); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">';
+    if (displayDrivers.length > 0) {
+      for (var i = 0; i < displayDrivers.length; i++) {
+        var driver = displayDrivers[i];
+        var driverJson = JSON.stringify(driver).replace(/'/g, "\\'");
+        html += '<div class="driver-card" onclick=\'app.showDriverDetail(' + driverJson + ')\'>';
         html += '  <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Important Factor</div>';
-        html += '  <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.3;">' + drivers[i].text + '</div>';
+        html += '  <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.3;">' + driver.displayShort + '</div>';
         html += '  <div style="margin-top: 8px; background: var(--border); height: 4px; border-radius: 2px; overflow: hidden;">';
         html += '    <div style="width: 100%; height: 100%; background: var(--text-main); opacity: 0.8;"></div>';
         html += '  </div>';
+        html += '  <div style="margin-top: 4px; font-size: 0.65rem; color: var(--text-muted); text-align: right;">Tap to read more</div>';
         html += '</div>';
       }
     } else {
@@ -466,6 +669,43 @@
     }
 
     html += '</div></div>';
+
+    // --- CATEGORY BREAKDOWN ---
+    html += '<div class="results-section">';
+    html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 24px;">Category Breakdown</h3>';
+    html += '<div class="category-breakdown">';
+
+    // Loop through categories and show spectrums
+    categories.forEach(function (cat) {
+      var catOura = result.scores.categoryScoresOura[cat.id] || 0;
+      var catRc = result.scores.categoryScoresRingconn[cat.id] || 0;
+      var totalCat = catOura + catRc;
+
+      if (totalCat > 0) {
+        var spectrumPos = 50;
+        spectrumPos = 50 + ((catRc - catOura) / totalCat) * 50;
+        // Clamp it a bit for UI
+        spectrumPos = Math.max(5, Math.min(95, spectrumPos));
+
+        var catWinner = "NEUTRAL";
+        var winnerClass = "winner-neutral";
+        if (catOura > catRc + 1) { catWinner = "OURA"; winnerClass = "winner-oura"; }
+        else if (catRc > catOura + 1) { catWinner = "RINGCONN"; winnerClass = "winner-ringconn"; }
+
+        html += '<div class="cat-breakdown-row">';
+        html += '  <div class="cat-breakdown-info">';
+        html += '    <span class="cat-breakdown-name">' + cat.name + '</span>';
+        html += '    <span class="cat-breakdown-winner ' + winnerClass + '">' + catWinner + '</span>';
+        html += '  </div>';
+        html += '  <div class="mini-spectrum-bg">';
+        html += '    <div class="mini-spectrum-indicator" style="left: ' + spectrumPos + '%;"></div>';
+        html += '  </div>';
+        html += '</div>';
+      }
+    });
+
+    html += '</div></div>';
+
     html += '<div style="margin-bottom: 32px; border-bottom: 1px solid var(--border);"></div>';
 
     html += '<div class="results-section">';
@@ -514,10 +754,14 @@
     },
 
     resetProgress: function () {
-      if (confirm('Are you sure you want to start over?')) {
+      if (confirm('Are you sure you want to start over? This will clear all answers in your current session' + (activeSlotIndex > 0 ? ' and erase slot ' + activeSlotIndex + '.' : '.'))) {
         ratings = {};
         preferences = {};
         currentCategoryIndex = 0;
+        if (activeSlotIndex > 0) {
+          try { localStorage.removeItem(getSlotKey(activeSlotIndex)); } catch (e) { }
+          activeSlotIndex = 0;
+        }
 
         // Re-init defaults
         questions.forEach(function (q) {
@@ -526,9 +770,11 @@
 
         saveToStorage();
         renderProgress();
-        document.getElementById('welcome-screen').classList.add('active');
-        document.getElementById('questionnaire-screen').classList.remove('active');
-        document.getElementById('existing-progress').style.display = 'none';
+        renderSlotsUI();
+        showScreen('welcome-screen');
+        var existing = document.getElementById('existing-progress');
+        if (existing) existing.style.display = 'none';
+        renderWelcome();
       }
     },
 
@@ -580,6 +826,8 @@
       saveToStorage();
       showScreen('results-screen');
       renderResults();
+      renderProgress();
+      renderSlotsUI();
     },
 
     showCategoryList: function () {
@@ -606,8 +854,110 @@
     skipCategory: function () {
       // Just move to next category. Since default is 5, this effectively skips.
       app.nextCategory();
-    }
+    },
+
+    showDriverDetail: function (driver) {
+      var modal = document.getElementById('driver-modal');
+      var textEl = document.getElementById('modal-driver-text');
+      var contextEl = document.getElementById('modal-driver-context');
+      var typeEl = document.getElementById('modal-driver-type');
+
+      if (modal && textEl && contextEl && typeEl) {
+        typeEl.textContent = "High Priority Factor";
+        textEl.textContent = driver.fullText;
+        contextEl.textContent = driver.context;
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden'; // Prevent scroll
+      }
+    },
+
+    closeModal: function (event) {
+      // Close if clicking X, the modal background, or if no event provided
+      if (!event || event.target.id === 'driver-modal' || event.target.className === 'close-modal') {
+        var modal = document.getElementById('driver-modal');
+        if (modal) {
+          modal.style.display = 'none';
+          document.body.style.overflow = ''; // Restore scroll
+        }
+      }
+    },
+
+    exportAsCsv: function () { exportAsCsv(); },
+    importFromCsv: function (file) { if (file) importFromCsv(file); },
+    triggerImportCsv: function () {
+      var el = document.getElementById('import-csv-input');
+      if (el) el.click();
+    },
+    randomizeAllAnswers: function () { randomizeAllAnswers(); },
+    saveToSlot: function (slotIndex) {
+      if (slotIndex < 1 || slotIndex > NUM_SLOTS) return;
+      var sum = getSlotSummary(slotIndex);
+      if (sum && sum.count > 0 && !confirm('Slot ' + slotIndex + ' already has ' + sum.count + ' answers. Overwrite?')) return;
+      saveToSlot(slotIndex);
+      renderWelcome();
+      renderProgress();
+      renderSlotsUI();
+      var active = document.querySelector('.screen.active');
+      if (active && active.id === 'questionnaire-screen') renderCategory();
+      else if (active && active.id === 'results-screen') renderResults();
+      else if (active && active.id === 'category-list-screen') buildCategoryList();
+    },
+    loadSlot: function (slotIndex) {
+      if (slotIndex < 1 || slotIndex > NUM_SLOTS) return;
+      var currentCount = getAnsweredCount();
+      if (currentCount > 0 && !confirm('Load slot ' + slotIndex + '? This will replace your current answers. Export or save to a slot first if you want to keep them.')) return;
+      loadSlot(slotIndex);
+      renderWelcome();
+      renderProgress();
+      renderSlotsUI();
+      var active = document.querySelector('.screen.active');
+      if (active && active.id === 'questionnaire-screen') renderCategory();
+      else if (active && active.id === 'results-screen') renderResults();
+      else if (active && active.id === 'category-list-screen') buildCategoryList();
+    },
+    deleteSlot: function (slotIndex) {
+      if (slotIndex < 1 || slotIndex > NUM_SLOTS) return;
+      var sum = getSlotSummary(slotIndex);
+      if (!sum || sum.count === 0) { renderSlotsUI(); return; }
+      if (!confirm('Delete slot ' + slotIndex + '? This cannot be undone.')) return;
+      try { localStorage.removeItem(getSlotKey(slotIndex)); } catch (e) { }
+      if (activeSlotIndex === slotIndex) {
+        ratings = {};
+        preferences = {};
+        currentCategoryIndex = 0;
+        questions.forEach(function (q) { ratings[q.id] = 5; });
+        activeSlotIndex = 0;
+        saveToStorage();
+        renderWelcome();
+        renderProgress();
+        renderSlotsUI();
+        showScreen('welcome-screen');
+        var existing = document.getElementById('existing-progress');
+        if (existing) existing.style.display = 'none';
+      } else {
+        renderSlotsUI();
+      }
+    },
+    getSlotSummary: getSlotSummary,
+    NUM_SLOTS: NUM_SLOTS
   };
+
+  function renderSlotsUI() {
+    var containers = document.querySelectorAll('.save-slots-container');
+    var html = '';
+    for (var i = 1; i <= NUM_SLOTS; i++) {
+      var sum = getSlotSummary(i);
+      var label = sum ? sum.count + ' answers' + (sum.savedAt ? ', ' + (sum.savedAt.slice(0, 10)) : '') : 'Empty';
+      if (i === activeSlotIndex) label += ' (current)';
+      html += '<div class="slot-row"><span class="slot-label">Slot ' + i + ': ' + label + '</span>';
+      html += '<div class="slot-actions">';
+      html += '<button type="button" class="btn btn-slot" onclick="app.saveToSlot(' + i + ')">Save</button>';
+      html += '<button type="button" class="btn btn-slot" onclick="app.loadSlot(' + i + ')">Load</button>';
+      html += '<button type="button" class="btn btn-slot btn-slot-delete" onclick="app.deleteSlot(' + i + ')">Delete</button>';
+      html += '</div></div>';
+    }
+    for (var c = 0; c < containers.length; c++) containers[c].innerHTML = html;
+  }
 
   global.app = app;
 

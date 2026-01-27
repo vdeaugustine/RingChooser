@@ -382,9 +382,18 @@
     };
   }
 
+  function getBlockerQuestionIds() {
+    var ids = [];
+    var q;
+    for (q in OURA_BLOCKERS) ids.push(q);
+    for (q in RINGCONN_BLOCKERS) ids.push(q);
+    return ids;
+  }
+
   global.SmartRingAlgorithm = {
     MIN_QUESTIONS: MIN_QUESTIONS,
     MIN_CATEGORIES: MIN_CATEGORIES,
+    getBlockerQuestionIds: getBlockerQuestionIds,
     processDealBreakers: processDealBreakers,
     checkDataSufficiency: checkDataSufficiency,
     computeScores: computeScores,

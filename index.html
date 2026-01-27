@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
     <div id="app">
@@ -59,8 +59,19 @@
                             <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
                         </div>
                     </div>
+
+                    <div class="data-actions" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                        <h3 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 12px;">Data &amp; save slots</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.exportAsCsv()">Export as CSV</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.triggerImportCsv()">Import from CSV</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.randomizeAllAnswers()">Randomize all answers</button>
+                        </div>
+                        <div class="save-slots-container save-slots"></div>
+                    </div>
                 </div>
             </div>
+            <input type="file" id="import-csv-input" accept=".csv" style="display: none;" onchange="if(this.files && this.files[0]) { app.importFromCsv(this.files[0]); this.value = ''; }">
 
             <!-- Questionnaire Screen -->
             <div id="questionnaire-screen" class="screen">
@@ -103,9 +114,32 @@
                         <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Continue Answering</button>
                         <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
                     </div>
+                    <div class="data-actions results-data-actions" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                        <h3 style="font-size: 0.9rem; font-weight: 700; margin-bottom: 12px;">Data &amp; save slots</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.exportAsCsv()">Export as CSV</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.triggerImportCsv()">Import from CSV</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="app.randomizeAllAnswers()">Randomize all answers</button>
+                        </div>
+                        <div class="save-slots-container save-slots"></div>
+                    </div>
                 </div>
             </div>
         </main>
+
+        <!-- Driver Detail Modal -->
+        <div id="driver-modal" class="modal" onclick="app.closeModal(event)">
+            <div class="modal-content">
+                <span class="close-modal" onclick="app.closeModal(event)">&times;</span>
+                <div id="modal-body">
+                    <p id="modal-driver-type" class="modal-label"></p>
+                    <h3 id="modal-driver-text"></h3>
+                    <div class="modal-info">
+                        <p id="modal-driver-context"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Footer -->
         <footer>
@@ -116,6 +150,6 @@
 
     <script src="questions.js"></script>
     <script src="algorithm.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>
