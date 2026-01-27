@@ -620,6 +620,124 @@ main {
   color: var(--text-main);
 }
 
+/* Category Navigation Bar (HStack) */
+.category-nav-wrapper {
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.category-nav-wrapper::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.category-nav-hstack {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px;
+  width: max-content;
+}
+
+.cat-nav-item {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.cat-nav-item:hover {
+  transform: scale(1.1);
+}
+
+.cat-nav-item svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cat-nav-item circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.cat-nav-item .cat-track {
+  stroke: var(--border);
+}
+
+.cat-nav-item .cat-progress {
+  stroke: var(--text-main);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cat-nav-item .cat-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  z-index: 1;
+  font-family: var(--font-heading);
+}
+
+@keyframes activePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1.2); }
+}
+
+.cat-nav-item.active {
+  animation: activePulse 0.4s ease-out forwards;
+  z-index: 2;
+}
+
+.cat-nav-item.active::before {
+  content: '';
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  background: var(--text-main);
+  opacity: 0.1;
+  border-radius: 50%;
+}
+
+.cat-nav-item.active .cat-label {
+  color: var(--text-main);
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.cat-nav-item.active .cat-track {
+  stroke: var(--text-main);
+  stroke-width: 4;
+  opacity: 0.1;
+}
+
+.cat-nav-item.completed {
+  filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.4));
+}
+
+.cat-nav-item.completed .cat-progress {
+  stroke: #10b981;
+}
+
+.cat-nav-item.completed .cat-label {
+  color: #10b981;
+}
+
 /* Category Group Layout */
 .category-group-container {
   display: flex;

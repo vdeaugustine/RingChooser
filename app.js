@@ -90,6 +90,48 @@
     if (pctSpan) pctSpan.textContent = Math.round(pct) + '%';
   }
 
+  function renderCategoryNav() {
+    var navContainer = document.getElementById('category-nav');
+    if (!navContainer) return;
+
+    var html = '';
+    categories.forEach(function (cat, index) {
+      var catQs = questions.filter(function (q) { return q.categoryId === cat.id; });
+      var answered = catQs.filter(function (q) { return ratings[q.id] !== undefined; }).length;
+      var pct = (answered / catQs.length) * 100;
+
+      var isCurrent = index === currentCategoryIndex ? 'active' : '';
+      var isCompleted = answered === catQs.length ? 'completed' : '';
+
+      // SVG Circle Progress
+      // Periphery = 2 * 3.14 * 18 = 113.04
+      var circumference = 113.04;
+      var offset = circumference - (pct / 100) * circumference;
+
+      html += '<div class="cat-nav-item ' + isCurrent + ' ' + isCompleted + '" onclick="app.jumpToCategory(' + index + ')" title="' + cat.name + '">';
+      html += '  <svg viewBox="0 0 40 40">';
+      html += '    <circle class="cat-track" cx="20" cy="20" r="18" />';
+      html += '    <circle class="cat-progress" cx="20" cy="20" r="18" style="stroke-dasharray: ' + circumference + '; stroke-dashoffset: ' + offset + ';" />';
+      html += '  </svg>';
+      html += '  <span class="cat-label">' + (index + 1) + '</span>';
+      html += '</div>';
+    });
+
+    navContainer.innerHTML = html;
+
+    // Update active category name label
+    var nameLabel = document.getElementById('active-category-name');
+    if (nameLabel && categories[currentCategoryIndex]) {
+      nameLabel.textContent = (currentCategoryIndex + 1) + '. ' + categories[currentCategoryIndex].name;
+    }
+
+    // Auto-scroll to current category
+    var activeItem = navContainer.querySelector('.cat-nav-item.active');
+    if (activeItem) {
+      activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }
+
   function cleanQuestionText(text) {
     if (!text) return "";
     var t = text.trim();
@@ -141,12 +183,6 @@
     });
 
     var html = '';
-
-    // Header
-    html += '<div class="category-header" style="text-align: center;">';
-    html += '  <p>Category ' + (currentCategoryIndex + 1) + ' of ' + categories.length + '</p>';
-    html += '  <h2>' + cat.name + '</h2>';
-    html += '</div>';
 
     if (cat.description) {
       html += '<div class="category-description" style="margin-bottom: 24px; text-align: center; color: var(--text-muted); font-size: 0.95rem;">' + cat.description + '</div>';
@@ -219,6 +255,7 @@
     container.innerHTML = html;
     window.scrollTo(0, 0);
     renderProgress();
+    renderCategoryNav();
     saveToStorage();
   }
 
@@ -526,12 +563,16 @@
       saveToStorage();
       // Update the display for this specific question
       updateRatingDisplay(questionId, value);
+      // Update global and category progress
+      renderCategoryNav();
     },
 
     setPreference: function (questionId, value) {
       preferences[questionId] = value === 'NONE' ? null : value;
       saveToStorage();
       updatePreferenceDisplay(questionId, value);
+      // Update global and category progress
+      renderCategoryNav();
     },
 
     viewResults: function () {
