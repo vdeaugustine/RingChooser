@@ -673,38 +673,89 @@
     // --- CATEGORY BREAKDOWN ---
     html += '<div class="results-section">';
     html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 24px;">Category Breakdown</h3>';
-    html += '<div class="category-breakdown">';
 
-    // Loop through categories and show spectrums
+    var favorOura = [];
+    var favorRingconn = [];
+    var favorNeutral = [];
+
     categories.forEach(function (cat) {
       var catOura = result.scores.categoryScoresOura[cat.id] || 0;
       var catRc = result.scores.categoryScoresRingconn[cat.id] || 0;
       var totalCat = catOura + catRc;
 
       if (totalCat > 0) {
-        var spectrumPos = 50;
-        spectrumPos = 50 + ((catRc - catOura) / totalCat) * 50;
-        // Clamp it a bit for UI
+        var spectrumPos = 50 + ((catRc - catOura) / totalCat) * 50;
         spectrumPos = Math.max(5, Math.min(95, spectrumPos));
 
         var catWinner = "NEUTRAL";
         var winnerClass = "winner-neutral";
-        if (catOura > catRc + 1) { catWinner = "OURA"; winnerClass = "winner-oura"; }
-        else if (catRc > catOura + 1) { catWinner = "RINGCONN"; winnerClass = "winner-ringconn"; }
 
-        html += '<div class="cat-breakdown-row">';
-        html += '  <div class="cat-breakdown-info">';
-        html += '    <span class="cat-breakdown-name">' + cat.name + '</span>';
-        html += '    <span class="cat-breakdown-winner ' + winnerClass + '">' + catWinner + '</span>';
-        html += '  </div>';
-        html += '  <div class="mini-spectrum-bg">';
-        html += '    <div class="mini-spectrum-indicator" style="left: ' + spectrumPos + '%;"></div>';
-        html += '  </div>';
-        html += '</div>';
+        if (catOura > catRc + 0.1) { // Use a small threshold
+          catWinner = "OURA";
+          winnerClass = "winner-oura";
+          favorOura.push({ name: cat.name, spectrumPos: spectrumPos, winnerClass: winnerClass, winnerLabel: catWinner });
+        }
+        else if (catRc > catOura + 0.1) {
+          catWinner = "RINGCONN";
+          winnerClass = "winner-ringconn";
+          favorRingconn.push({ name: cat.name, spectrumPos: spectrumPos, winnerClass: winnerClass, winnerLabel: catWinner });
+        }
+        else {
+          favorNeutral.push({ name: cat.name, spectrumPos: spectrumPos, winnerClass: winnerClass, winnerLabel: catWinner });
+        }
       }
     });
 
-    html += '</div></div>';
+    html += '<div class="category-breakdown-columns">';
+
+    // Helper to render items
+    var renderCatItem = function (item) {
+      var itemHtml = '<div class="cat-breakdown-row-compact">';
+      itemHtml += '  <div class="cat-breakdown-info">';
+      itemHtml += '    <span class="cat-breakdown-name-compact">' + item.name + '</span>';
+      itemHtml += '  </div>';
+      itemHtml += '  <div class="mini-spectrum-bg">';
+      itemHtml += '    <div class="mini-spectrum-indicator" style="left: ' + item.spectrumPos + '%;"></div>';
+      itemHtml += '  </div>';
+      itemHtml += '</div>';
+      return itemHtml;
+    };
+
+    // Left Column: Oura
+    html += '<div class="category-column">';
+    html += '  <div class="column-header-box header-oura">OURA</div>';
+    if (favorOura.length === 0) {
+      html += '<p class="empty-column-text">No categories favor Oura</p>';
+    } else {
+      favorOura.forEach(function (item) { html += renderCatItem(item); });
+    }
+    html += '</div>';
+
+    // Right Column: RingConn
+    html += '<div class="category-column">';
+    html += '  <div class="column-header-box header-ringconn">RINGCONN</div>';
+    if (favorRingconn.length === 0) {
+      html += '<p class="empty-column-text">No categories favor RingConn</p>';
+    } else {
+      favorRingconn.forEach(function (item) { html += renderCatItem(item); });
+    }
+    html += '</div>';
+
+    html += '</div>'; // end category-breakdown-columns
+
+    // Optional: Show neutral ones if they exist at the bottom
+    if (favorNeutral.length > 0) {
+      html += '<div class="neutral-categories-section" style="margin-top: 24px; border-top: 1px dashed var(--border); padding-top: 16px;">';
+      html += '  <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-align: center;">Neutral Categories</p>';
+      html += '  <div class="category-breakdown-columns">';
+      html += '    <div class="category-column full-width">';
+      favorNeutral.forEach(function (item) { html += renderCatItem(item); });
+      html += '    </div>';
+      html += '  </div>';
+      html += '</div>';
+    }
+
+    html += '</div>'; // end results-section
 
     html += '<div style="margin-bottom: 32px; border-bottom: 1px solid var(--border);"></div>';
 
