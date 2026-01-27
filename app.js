@@ -292,6 +292,56 @@
       html += '<p style="color: var(--warning-text); opacity: 0.9; font-size: 0.95rem;">You rated some opposing factors highly. Your preference for ' + winnerName + ' is based on weighted averages, but you may want to re-examine these categories specifically.</p></div>';
     }
 
+    // --- VISUALIZATIONS ---
+
+    html += '<div class="results-section">';
+    html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 24px;">Preference Spectrum</h3>';
+
+    // Calculate simple differential for spectrum (-100 Oura to +100 RingConn)
+    var netDiff = (scores.ringconnPctWeighted - scores.ouraPctWeighted);
+    var spectrumPos = 50 + (netDiff / 2);
+    spectrumPos = Math.max(10, Math.min(90, spectrumPos));
+
+    html += '<div class="spectrum-container" style="position: relative; height: 40px; background: linear-gradient(90deg, #18181b 0%, #a1a1aa 50%, #d4d4d8 100%); border-radius: 20px; margin-bottom: 40px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);">';
+    html += '  <div style="position: absolute; top: 45px; left: 0; font-size: 0.75rem; font-weight: 700; color: var(--text-main);">OURA</div>';
+    html += '  <div style="position: absolute; top: 45px; right: 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">RINGCONN</div>';
+    html += '  <div style="position: absolute; top: 45px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: var(--text-muted);">NEUTRAL</div>';
+    html += '  <div class="spectrum-indicator" style="position: absolute; left: ' + spectrumPos + '%; top: -6px; transform: translateX(-50%); width: 52px; height: 52px; background: var(--card-bg); border: 2px solid var(--text-main); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.15); transition: left 1s cubic-bezier(0.16, 1, 0.3, 1);">';
+    html += '    <span style="font-weight: 800; font-size: 0.8rem; color: var(--text-main);">' + Math.round(rec.winner === 'OURA' ? scores.ouraPctWeighted : scores.ringconnPctWeighted) + '%</span>';
+    html += '  </div>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="results-section">';
+    html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 24px;">Your Key Drivers</h3>';
+    html += '<div style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">';
+
+    var drivers = [];
+    for (var k in ratings) {
+      if (ratings[k] >= 8) {
+        var q = questions.find(function (z) { return z.id === k; });
+        if (q) drivers.push({ text: q.question.substring(0, 40) + '...', score: ratings[k] });
+      }
+    }
+    drivers = drivers.slice(0, 4);
+
+    if (drivers.length > 0) {
+      for (var i = 0; i < drivers.length; i++) {
+        html += '<div class="driver-card" style="background: var(--box-bg-alt); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">';
+        html += '  <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">Important Factor</div>';
+        html += '  <div style="font-size: 0.85rem; font-weight: 600; line-height: 1.3;">' + drivers[i].text + '</div>';
+        html += '  <div style="margin-top: 8px; background: var(--border); height: 4px; border-radius: 2px; overflow: hidden;">';
+        html += '    <div style="width: 100%; height: 100%; background: var(--text-main); opacity: 0.8;"></div>';
+        html += '  </div>';
+        html += '</div>';
+      }
+    } else {
+      html += '<p style="color: var(--text-muted); font-size: 0.9rem;">No specific high-priority drivers identified.</p>';
+    }
+
+    html += '</div></div>';
+    html += '<div style="margin-bottom: 32px; border-bottom: 1px solid var(--border);"></div>';
+
     html += '<div class="results-section">';
     html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 16px;">Total Cost Comparison (5 Years)</h3>';
     html += '<div style="display: flex; flex-direction: column; gap: 12px;">';

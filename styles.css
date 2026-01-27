@@ -631,6 +631,47 @@ main {
   border-radius: 6px;
 }
 
+/* Visualization Styles */
+.spectrum-container {
+  position: relative;
+  height: 48px;
+  background: linear-gradient(90deg, var(--text-main) 0%, var(--secondary) 100%);
+  border-radius: 24px;
+  margin-bottom: 48px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 16px;
+}
+
+.spectrum-indicator {
+  position: absolute;
+  top: -6px;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  background: var(--card-bg);
+  border: 4px solid var(--text-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: left 1s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+}
+
+.driver-card {
+  background: var(--box-bg-alt);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: transform 0.3s ease;
+}
+
+.driver-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--text-main);
+}
+
 /* Footer */
 footer {
   padding: 32px 24px;
