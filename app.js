@@ -4,7 +4,7 @@
  * Persistence via localStorage for GitHub Pages and mobile.
  */
 
-(function(global) {
+(function (global) {
   'use strict';
 
   var STORAGE_KEY = 'smart_ring_decision_data';
@@ -40,7 +40,7 @@
         savedAt: new Date().toISOString()
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {}
+    } catch (e) { }
   }
 
   function getAnsweredCount() {
@@ -98,15 +98,24 @@
     if (textEl) textEl.textContent = q.question;
     if (idEl) idEl.textContent = q.id;
     if (contextEl) contextEl.textContent = q.context || '';
-    var inCat = questions.filter(function(x) { return x.categoryId === q.categoryId; });
-    var idxInCat = inCat.findIndex(function(x) { return x.id === q.id; }) + 1;
-    if (catNameEl) catNameEl.textContent = (categories.find(function(c) { return c.id === q.categoryId; }) || {}).name || q.categoryId;
+    var inCat = questions.filter(function (x) { return x.categoryId === q.categoryId; });
+    var idxInCat = inCat.findIndex(function (x) { return x.id === q.id; }) + 1;
+    if (catNameEl) catNameEl.textContent = (categories.find(function (c) { return c.id === q.categoryId; }) || {}).name || q.categoryId;
     if (catProgressEl) catProgressEl.textContent = 'Question ' + idxInCat + ' of ' + inCat.length;
 
     var neutralDiv = document.getElementById('neutral-preference');
     if (neutralDiv) {
       if (q.favors === 'NEUTRAL') {
         neutralDiv.style.display = 'block';
+        var prefVal = preferences[q.id];
+        var prefBtns = neutralDiv.querySelectorAll('.btn-preference');
+        for (var j = 0; j < prefBtns.length; j++) {
+          prefBtns[j].classList.remove('selected');
+          var onclickStr = prefBtns[j].getAttribute('onclick');
+          if (prefVal === 'OURA' && onclickStr.indexOf("'OURA'") !== -1) prefBtns[j].classList.add('selected');
+          if (prefVal === 'RINGCONN' && onclickStr.indexOf("'RINGCONN'") !== -1) prefBtns[j].classList.add('selected');
+          if (!prefVal && onclickStr.indexOf("'NONE'") !== -1) prefBtns[j].classList.add('selected');
+        }
       } else {
         neutralDiv.style.display = 'none';
       }
@@ -158,15 +167,15 @@
     container.innerHTML = '';
     for (var i = 0; i < categories.length; i++) {
       var cat = categories[i];
-      var qs = questions.filter(function(q) { return q.categoryId === cat.id; });
-      var answered = qs.filter(function(q) { return ratings[q.id] !== undefined && ratings[q.id] !== 'SKIP'; }).length;
+      var qs = questions.filter(function (q) { return q.categoryId === cat.id; });
+      var answered = qs.filter(function (q) { return ratings[q.id] !== undefined && ratings[q.id] !== 'SKIP'; }).length;
       var div = document.createElement('div');
       div.className = 'category-list-item';
       div.innerHTML = '<strong>' + cat.name + '</strong><span>' + answered + ' / ' + qs.length + ' answered</span>';
-      (function(idx) {
-        var firstQ = questions.findIndex(function(q) { return q.categoryId === cat.id; });
+      (function (idx) {
+        var firstQ = questions.findIndex(function (q) { return q.categoryId === cat.id; });
         if (firstQ >= 0) {
-          div.onclick = function() {
+          div.onclick = function () {
             currentIndex = firstQ;
             showScreen('questionnaire-screen');
             renderQuestion();
@@ -229,41 +238,84 @@
 
     var winnerName = rec.winner === 'OURA' ? 'Oura Ring 4' : 'RingConn Gen 2';
     var loserName = rec.winner === 'OURA' ? 'RingConn Gen 2' : 'Oura Ring 4';
+    var winnerScore = rec.winner === 'OURA' ? scores.ouraPctWeighted : scores.ringconnPctWeighted;
+    var loserScore = rec.winner === 'OURA' ? scores.ringconnPctWeighted : scores.ouraPctWeighted;
 
-    html += '<div class="results-section results-summary">';
-    html += '<h2>Recommendation Summary</h2>';
-    html += '<p class="recommendation-winner">Recommended: <strong>' + winnerName + '</strong></p>';
-    html += '<p>Confidence: <strong>' + (conf ? conf.label : 'N/A') + '</strong>' + (conf ? ' (' + Math.round(conf.score) + '%)' : '') + '</p>';
-    html += '<p>Strength: <strong>' + (rec.strength || '') + '</strong></p>';
-    html += '<p class="recommendation-message">' + formatRecommendationMessage(rec, scores) + '</p>';
+    html += '<div class="results-section">';
+    html += '<div class="recommendation-card">';
+    html += '<p style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem; margin-bottom: 8px; font-weight: 700; opacity: 0.9;">Your Top Choice</p>';
+    html += '<h2 class="recommendation-winner">' + winnerName + '</h2>';
+    html += '<p style="font-size: 1.1rem; opacity: 0.95; max-width: 400px; margin: 16px auto 0;">' + formatRecommendationMessage(rec, scores) + '</p>';
+    html += '</div>';
     html += '</div>';
 
     html += '<div class="results-section">';
-    html += '<h3>Score breakdown</h3>';
-    html += '<p>Oura Ring 4: <strong>' + (scores.ouraPctWeighted != null ? scores.ouraPctWeighted.toFixed(1) : '') + '%</strong></p>';
-    html += '<p>RingConn Gen 2: <strong>' + (scores.ringconnPctWeighted != null ? scores.ringconnPctWeighted.toFixed(1) : '') + '%</strong></p>';
-    html += '<p>Differential: ' + (scores.differentialWeighted != null ? scores.differentialWeighted.toFixed(1) : '') + ' percentage points</p>';
-    html += '<p>Questions answered: ' + result.answeredCount + ' of ' + questions.length + ' (' + Math.round((result.answeredCount / questions.length) * 100) + '%)</p>';
-    html += '<p>Categories covered: ' + result.categoriesWithAnswers + ' of ' + categories.length + '</p>';
+    html += '<h2 style="font-size: 1.25rem; font-family: var(--font-heading); margin-bottom: 24px;">Match Analysis</h2>';
+
+    // Winner Score
+    html += '<div class="score-analysis" style="margin-bottom: 24px;">';
+    html += '  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">';
+    html += '    <span style="font-weight: 700; font-family: var(--font-heading);">' + winnerName + ' Match</span>';
+    html += '    <span style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);">' + (winnerScore != null ? winnerScore.toFixed(1) : '') + '%</span>';
+    html += '  </div>';
+    html += '  <div class="score-bar-bg" style="height: 12px; background: var(--border); border-radius: 6px; overflow: hidden;">';
+    html += '    <div class="score-bar-fill" style="width: ' + winnerScore + '%; height: 100%; background: var(--text-main); border-radius: 6px;"></div>';
+    html += '  </div>';
+    html += '</div>';
+
+    // Loser Score
+    html += '<div class="score-analysis" style="margin-bottom: 24px;">';
+    html += '  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">';
+    html += '    <span style="font-weight: 600; color: var(--text-muted);">' + loserName + ' Match</span>';
+    html += '    <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-muted);">' + (loserScore != null ? loserScore.toFixed(1) : '') + '%</span>';
+    html += '  </div>';
+    html += '  <div class="score-bar-bg" style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; opacity: 0.7;">';
+    html += '    <div class="score-bar-fill" style="width: ' + loserScore + '%; height: 100%; background: var(--secondary); border-radius: 4px;"></div>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">';
+    html += '  <div style="background: var(--box-bg-alt); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">';
+    html += '    <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">Strength</p>';
+    html += '    <p style="font-weight: 700; color: var(--text-main);">' + (rec.strength || '') + '</p>';
+    html += '  </div>';
+    html += '  <div style="background: var(--box-bg-alt); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border);">';
+    html += '    <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 4px;">Confidence</p>';
+    html += '    <p style="font-weight: 700; color: var(--text-main);">' + (conf ? conf.label : 'N/A') + '</p>';
+    html += '  </div>';
+    html += '</div>';
     html += '</div>';
 
     if (contradictions.length > 0) {
-      html += '<div class="results-section results-warning"><h3>Potential conflicting priorities</h3>';
-      html += '<p>You rated some opposing factors highly. Consider which matters more to you.</p></div>';
+      html += '<div class="results-section results-warning" style="background: var(--warning-bg); border: 1px solid var(--warning-border); padding: 20px; border-radius: var(--radius-md);">';
+      html += '<h3 style="font-family: var(--font-heading); color: var(--warning-text); margin-top: 0;">Potential conflicting priorities</h3>';
+      html += '<p style="color: var(--warning-text); opacity: 0.9; font-size: 0.95rem;">You rated some opposing factors highly. Your preference for ' + winnerName + ' is based on weighted averages, but you may want to re-examine these categories specifically.</p></div>';
     }
 
     html += '<div class="results-section">';
-    html += '<h3>Total cost of ownership (reference)</h3>';
-    html += '<p>Oura: $349-$499 + subscription ($69.99/year). Year 5 total ~$699-$849.</p>';
-    html += '<p>RingConn: $199-$299 one-time. Year 5 total $199-$299.</p>';
-    html += '<p>5-year savings with RingConn: about $400-$650.</p>';
+    html += '<h3 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 16px;">Total Cost Comparison (5 Years)</h3>';
+    html += '<div style="display: flex; flex-direction: column; gap: 12px;">';
+    html += '  <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">';
+    html += '    <span style="font-weight: 600;">Oura Ring 4</span>';
+    html += '    <span style="font-weight: 700; color: #ef4444;">~$699 - $849</span>';
+    html += '  </div>';
+    html += '  <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">';
+    html += '    <span style="font-weight: 600;">RingConn Gen 2</span>';
+    html += '    <span style="font-weight: 700; color: #10b981;">$199 - $299</span>';
+    html += '  </div>';
+    html += '  <p style="font-size: 0.85rem; color: var(--success-text); background: var(--success-bg); padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">RingConn saves you roughly <strong>$400-$650</strong> over 5 years by avoiding subscription fees.</p>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 24px;">';
+    html += '  Answered ' + result.answeredCount + ' of ' + questions.length + ' questions (' + Math.round((result.answeredCount / questions.length) * 100) + '%)';
     html += '</div>';
 
     container.innerHTML = html;
   }
 
   var app = {
-    init: function() {
+    init: function () {
       if (global.SmartRingQuestions) {
         questions = global.SmartRingQuestions.QUESTIONS || [];
         categories = global.SmartRingQuestions.CATEGORIES || [];
@@ -274,18 +326,18 @@
       showScreen('welcome-screen');
     },
 
-    startQuestionnaire: function() {
+    startQuestionnaire: function () {
       currentIndex = 0;
       showScreen('questionnaire-screen');
       renderQuestion();
     },
 
-    continueQuestionnaire: function() {
+    continueQuestionnaire: function () {
       showScreen('questionnaire-screen');
       renderQuestion();
     },
 
-    selectRating: function(val) {
+    selectRating: function (val) {
       if (questions.length === 0) return;
       var q = questions[currentIndex];
       ratings[q.id] = val;
@@ -293,7 +345,7 @@
       renderQuestion();
     },
 
-    selectPreference: function(pref) {
+    selectPreference: function (pref) {
       if (questions.length === 0) return;
       var q = questions[currentIndex];
       preferences[q.id] = pref === 'NONE' ? null : pref;
@@ -301,7 +353,7 @@
       renderQuestion();
     },
 
-    skipQuestion: function() {
+    skipQuestion: function () {
       if (questions.length === 0) return;
       var q = questions[currentIndex];
       ratings[q.id] = 'SKIP';
@@ -310,7 +362,7 @@
       app.nextQuestion();
     },
 
-    nextQuestion: function() {
+    nextQuestion: function () {
       if (currentIndex < questions.length - 1) {
         currentIndex++;
         showScreen('questionnaire-screen');
@@ -319,7 +371,7 @@
       }
     },
 
-    previousQuestion: function() {
+    previousQuestion: function () {
       if (currentIndex > 0) {
         currentIndex--;
         showScreen('questionnaire-screen');
@@ -328,22 +380,22 @@
       }
     },
 
-    showCategoryList: function() {
+    showCategoryList: function () {
       buildCategoryList();
       showScreen('category-list-screen');
     },
 
-    returnToQuestionnaire: function() {
+    returnToQuestionnaire: function () {
       showScreen('questionnaire-screen');
       renderQuestion();
     },
 
-    viewResults: function() {
+    viewResults: function () {
       renderResults();
       showScreen('results-screen');
     },
 
-    resetProgress: function() {
+    resetProgress: function () {
       if (typeof confirm !== 'undefined' && !confirm('Clear all answers and start over?')) return;
       ratings = {};
       preferences = {};
@@ -358,7 +410,7 @@
   global.app = app;
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { app.init(); });
+    document.addEventListener('DOMContentLoaded', function () { app.init(); });
   } else {
     app.init();
   }

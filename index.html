@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Ring Decision Tool - Oura vs RingConn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -30,38 +33,31 @@
             <!-- Welcome Screen -->
             <div id="welcome-screen" class="screen active">
                 <div class="welcome-content">
-                    <h2>Welcome to the Smart Ring Decision Tool</h2>
-                    <p>This comprehensive questionnaire will help you decide between the Oura Ring 4 and RingConn Gen 2 smart rings.</p>
+                    <h2>Find Your Perfect Smart Ring</h2>
+                    <p>Compare Oura Ring 4 and RingConn Gen 2 based on your unique lifestyle and priorities.</p>
                     
                     <div class="info-box">
-                        <h3>How it works:</h3>
+                        <h3><span class="icon">📊</span> How it works</h3>
                         <ul>
-                            <li><strong>156 questions</strong> covering 22 categories</li>
-                            <li>Rate each question from <strong>0-10</strong> based on importance to you</li>
-                            <li>Your answers are <strong>saved automatically</strong> so you can return later</li>
-                            <li>Get a <strong>personalized recommendation</strong> based on your priorities</li>
+                            <li><strong>156 scientific questions</strong> across 22 critical categories.</li>
+                            <li>Rate each feature from <strong>0-10</strong> based on how much you care.</li>
+                            <li>Get a <strong>mathematically weighted recommendation</strong> tailored to you.</li>
                         </ul>
                     </div>
 
-                    <div class="info-box">
-                        <h3>Rating Scale:</h3>
-                        <ul>
-                            <li><strong>0</strong> - Not Important</li>
-                            <li><strong>1-2</strong> - Very Low Importance</li>
-                            <li><strong>3-4</strong> - Low to Below Average</li>
-                            <li><strong>5</strong> - Moderate Importance</li>
-                            <li><strong>6-7</strong> - High Importance</li>
-                            <li><strong>8-9</strong> - Very High to Critical</li>
-                            <li><strong>10</strong> - Absolute Priority (Deal-breaker)</li>
-                        </ul>
+                    <div class="info-box" style="background: var(--box-bg-alt); border: 1px dashed var(--border);">
+                        <h3><span class="icon">✨</span> Your Data is Private</h3>
+                        <p style="font-size: 0.9rem; margin: 0; color: var(--text-muted);">All answers are stored locally on your device. We never see your data.</p>
                     </div>
 
-                    <button class="btn btn-primary btn-large" onclick="app.startQuestionnaire()">Start Questionnaire</button>
+                    <button class="btn btn-primary btn-large" onclick="app.startQuestionnaire()">Start Analysis</button>
                     
-                    <div class="existing-progress" id="existing-progress" style="display: none;">
-                        <p>You have answered <span id="existing-count">0</span> questions previously.</p>
-                        <button class="btn btn-secondary" onclick="app.continueQuestionnaire()">Continue Where I Left Off</button>
-                        <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
+                    <div class="existing-progress" id="existing-progress" style="display: none; text-align: center; border-top: 1px solid var(--border); margin-top: 24px; padding-top: 24px;">
+                        <p style="font-weight: 600; margin-bottom: 16px;">Welcome back! You have <span id="existing-count" style="color: var(--primary); font-weight: 800;">0</span> questions answered.</p>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="app.continueQuestionnaire()">Continue Analysis</button>
+                            <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -125,7 +121,7 @@
                     </div>
 
                     <div class="category-navigation">
-                        <button class="btn btn-text" onclick="app.showCategoryList()">View All Categories</button>
+                        <button class="btn btn-secondary" onclick="app.showCategoryList()">All Categories</button>
                         <button class="btn btn-primary" onclick="app.viewResults()">View Results</button>
                     </div>
                 </div>
