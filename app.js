@@ -106,18 +106,26 @@
     var rows = ['questionId', 'questionText', 'categoryId', 'rating', 'preference'];
     for (var i = 0; i < questions.length; i++) {
       var q = questions[i];
-      var r = ratings[q.id] !== undefined ? ratings[q.id] : '';
+      var r = (ratings[q.id] !== undefined && ratings[q.id] !== null) ? ratings[q.id] : '';
       var p = (q.favors === 'NEUTRAL' && preferences[q.id]) ? preferences[q.id] : '';
       var text = (q.question || '').replace(/"/g, '""');
       rows.push([q.id, '"' + text + '"', q.categoryId || '', r, p].join(','));
     }
     var csv = rows.join('\n');
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.style.display = 'none';
+    a.href = url;
     a.download = 'ring-chooser-answers-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+
+    // Use a small timeout before cleanup to ensure the browser has started the download
+    setTimeout(function () {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
   }
 
   function parseCsvRow(line) {

@@ -50,6 +50,7 @@
                     <div class="existing-progress" id="existing-progress" style="display: none; text-align: center; border-top: 1px solid var(--border); margin-top: 24px; padding-top: 24px;">
                         <p style="font-weight: 600; margin-bottom: 16px;">Welcome back! You have <span id="existing-count" style="color: var(--primary); font-weight: 800;">0</span> questions answered.</p>
                         <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="btn btn-primary" onclick="app.viewResults()">View Current Results</button>
                             <button class="btn btn-secondary" onclick="app.continueQuestionnaire()">Continue Analysis</button>
                             <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
                         </div>
@@ -106,6 +107,7 @@
                         <!-- Results will be dynamically generated -->
                     </div>
                     <div class="results-actions">
+                        <button class="btn btn-primary" onclick="app.returnToHome()">Return to Home</button>
                         <button class="btn btn-secondary" onclick="app.returnToQuestionnaire()">Continue Answering</button>
                         <button class="btn btn-text" onclick="app.resetProgress()">Start Over</button>
                     </div>
